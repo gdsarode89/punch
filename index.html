@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Attendance Pro Mobile</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --day: #fbbf24;
+            --night: #4f46e5;
+            --leave: #ef4444;
+            --extra: #10b981;
+            --bg: #f8fafc;
+            --text: #1e293b;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg); 
+            margin: 0; 
+            color: var(--text);
+            line-height: 1.5;
+        }
+
+        /* Login Screen */
+        #loginScreen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px;
+        }
+        
+        .login-card {
+            background: white; padding: 30px; border-radius: 20px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 16px; margin: 8px 0; border: 1.5px solid #e2e8f0; 
+            border-radius: 12px; font-size: 16px; /* Prevents iOS zoom on focus */
+        }
+
+        /* Main Layout */
+        #mainApp { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        .card { 
+            background: white; padding: 20px; border-radius: 18px; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px;
+        }
+
+        /* Grid for Shift Buttons */
+        .shift-grid { 
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0; 
+        }
+
+        .shift-grid input { display: none; }
+        .shift-grid label {
+            padding: 18px 10px; border: 2px solid #f1f5f9; border-radius: 14px;
+            text-align: center; font-weight: 700; font-size: 14px; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; background: #fcfdfe;
+        }
+
+        .day:checked + label { border-color: var(--day); background: #fffbeb; color: #92400e; }
+        .night:checked + label { border-color: var(--night); background: #eef2ff; color: #3730a3; }
+        .leave:checked + label { border-color: var(--leave); background: #fef2f2; color: #991b1b; }
+        .extra:checked + label { border-color: var(--extra); background: #ecfdf5; color: #065f46; grid-column: span 2; }
+
+        /* Calendar */
+        .cal-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-header { font-size: 11px; text-align: center; color: #94a3b8; font-weight: 800; padding-bottom: 5px; }
+        .cal-day {
+            aspect-ratio: 1/1; background: #f8fafc; border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600; position: relative;
+        }
+        .status-tag { 
+            font-size: 8px; margin-top: 2px; padding: 1px 4px; border-radius: 4px;
+            background: var(--primary); color: white; max-width: 90%; overflow: hidden;
+        }
+
+        button {
+            width: 100%; padding: 16px; border: none; border-radius: 14px;
+            font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .btn-submit { background: var(--primary); color: white; margin-top: 10px; }
+        .btn-submit:active { transform: scale(0.96); }
+        .btn-secondary { background: #f1f5f9; color: #475569; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <div class="login-card">
+        <h2 style="margin-top:0">Welcome Back</h2>
+        <p style="color:#64748b; margin-bottom:20px">Enter credentials to continue</p>
+        <input type="text" id="user" placeholder="Username" autocomplete="username">
+        <input type="password" id="pass" placeholder="Password">
+        <button class="btn-submit" onclick="login()">Login</button>
+    </div>
+</div>
+
+<div id="mainApp">
+    <div class="header">
+        <h2 id="todayDate" style="margin:0; font-size: 1.2rem;">Date</h2>
+        <button onclick="logout()" style="width:auto; padding:8px 15px; font-size:12px;" class="btn-secondary">Exit</button>
+    </div>
+
+    <div class="card">
+        <div class="shift-grid">
+            <input type="radio" name="s" id="d1" value="Day T1" class="day"><label for="d1">Day T1</label>
+            <input type="radio" name="s" id="d2" value="Day T2" class="day"><label for="d2">Day T2</label>
+            <input type="radio" name="s" id="n1" value="Night T1" class="night"><label for="n1">Night T1</label>
+            <input type="radio" name="s" id="n2" value="Night T2" class="night"><label for="n2">Night T2</label>
+            <input type="radio" name="s" id="off" value="OFF" class="leave"><label for="off">OFF</label>
+            <input type="radio" name="s" id="sl" value="SL" class="leave"><label for="sl">SL</label>
+            <input type="radio" name="s" id="al" value="AL" class="leave"><label for="al">AL</label>
+            <input type="radio" name="s" id="co" value="CO" class="leave"><label for="co">CO</label>
+            <input type="radio" name="s" id="ext" value="EXTRA" class="extra"><label for="ext">EXTRA SHIFT</label>
+        </div>
+        <button class="btn-submit" onclick="save()">Mark Attendance</button>
+    </div>
+
+    <div class="card">
+        <div class="cal-controls">
+            <button onclick="moveMonth(-1)" class="btn-secondary" style="width:40px; padding:10px;">←</button>
+            <strong id="monthYear">Month 2024</strong>
+            <button onclick="moveMonth(1)" class="btn-secondary" style="width:40px; padding:10px;">→</button>
+        </div>
+        <div class="calendar-grid" id="calGrid"></div>
+        <button class="btn-secondary" style="margin-top:20px" onclick="exportData()">Export to Excel (.xlsx)</button>
+    </div>
+</div>
+
+<script>
+    let logs = JSON.parse(localStorage.getItem('att_logs')) || {};
+    let viewDate = new Date();
+
+    function login() {
+        if(document.getElementById('user').value === "admin" && document.getElementById('pass').value === "1234") {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            render();
+        } else { alert("Wrong credentials!"); }
+    }
+
+    function logout() { location.reload(); }
+
+    function save() {
+        const sel = document.querySelector('input[name="s"]:checked');
+        if(!sel) return alert("Pick a shift!");
+        const now = new Date();
+        const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+        logs[key] = { status: sel.value, time: now.toLocaleTimeString() };
+        localStorage.setItem('att_logs', JSON.stringify(logs));
+        render();
+        alert("Attendance Marked!");
+    }
+
+    function render() {
+        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', weekday:'short' });
+        const grid = document.getElementById('calGrid');
+        const label = document.getElementById('monthYear');
+        grid.innerHTML = '';
+        
+        label.innerText = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div class="cal-header">${d}</div>`);
+
+        const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+        const days = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+
+        for(let i=0; i<first; i++) grid.innerHTML += `<div></div>`;
+        for(let d=1; d<=days; d++) {
+            const key = `${viewDate.getFullYear()}-${viewDate.getMonth()}-${d}`;
+            const log = logs[key];
+            const activeClass = log ? 'style="background:#fff; border:1.5px solid var(--primary)"' : '';
+            grid.innerHTML += `
+                <div class="cal-day" ${activeClass}>
+                    ${d}
+                    ${log ? `<div class="status-tag">${log.status}</div>` : ''}
+                </div>`;
+        }
+    }
+
+    function moveMonth(dir) {
+        viewDate.setMonth(viewDate.getMonth() + dir);
+        render();
+    }
+
+    function exportData() {
+        const rows = Object.keys(logs).map(k => ({ Date: k, Status: logs[k].status, MarkedAt: logs[k].time }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
+        XLSX.writeFile(wb, "Attendance_Report.xlsx");
+    }
+</script>
+</body>
+</html>
