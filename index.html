@@ -2,202 +2,397 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Attendance Pro Mobile</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced POS System v2</title>
     <style>
         :root {
-            --primary: #2563eb;
-            --day: #fbbf24;
-            --night: #4f46e5;
-            --leave: #ef4444;
-            --extra: #10b981;
-            --bg: #f8fafc;
-            --text: #1e293b;
+            --primary: #28a745;
+            --secondary: #17a2b8;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --border: #dee2e6;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: var(--bg); 
-            margin: 0; 
-            color: var(--text);
-            line-height: 1.5;
-        }
-
-        /* Login Screen */
-        #loginScreen {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 100vh; padding: 20px;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 10px; background: #f0f2f5; color: #333; }
+        .hidden { display: none !important; }
         
-        .login-card {
-            background: white; padding: 30px; border-radius: 20px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 400px;
-        }
-
-        input[type="text"], input[type="password"] {
-            width: 100%; padding: 16px; margin: 8px 0; border: 1.5px solid #e2e8f0; 
-            border-radius: 12px; font-size: 16px; /* Prevents iOS zoom on focus */
-        }
-
-        /* Main Layout */
-        #mainApp { display: none; padding: 15px; max-width: 600px; margin: 0 auto; }
-
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .container { max-width: 800px; margin: auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        .card { 
-            background: white; padding: 20px; border-radius: 18px; 
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px;
+        h2, h3 { border-bottom: 2px solid var(--light); padding-bottom: 10px; margin-top: 0; color: var(--dark); }
+
+        /* Form Elements */
+        input, select, button { 
+            width: 100%; padding: 12px; margin: 8px 0; 
+            font-size: 16px; border: 1px solid var(--border); 
+            border-radius: 6px; box-sizing: border-box; 
         }
 
-        /* Grid for Shift Buttons */
-        .shift-grid { 
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 15px 0; 
-        }
+        button { background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { opacity: 0.9; filter: brightness(0.95); }
+        
+        .btn-edit { background: var(--warning); color: #000; width: auto; padding: 5px 12px; font-size: 13px; }
+        .btn-delete { background: var(--danger); color: white; width: auto; padding: 5px 12px; font-size: 13px; }
+        #exportBtn { background: var(--secondary); }
 
-        .shift-grid input { display: none; }
-        .shift-grid label {
-            padding: 18px 10px; border: 2px solid #f1f5f9; border-radius: 14px;
-            text-align: center; font-weight: 700; font-size: 14px; transition: 0.2s;
-            display: flex; align-items: center; justify-content: center; background: #fcfdfe;
-        }
+        /* Menu Selection Styling */
+        .menu-section { background: #fdfdfd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid var(--border); }
+        .search-box { background: #fffde7; border: 1px solid #fbc02d; font-weight: bold; }
 
-        .day:checked + label { border-color: var(--day); background: #fffbeb; color: #92400e; }
-        .night:checked + label { border-color: var(--night); background: #eef2ff; color: #3730a3; }
-        .leave:checked + label { border-color: var(--leave); background: #fef2f2; color: #991b1b; }
-        .extra:checked + label { border-color: var(--extra); background: #ecfdf5; color: #065f46; grid-column: span 2; }
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border); padding: 12px; text-align: center; }
+        th { background: #f1f3f5; color: var(--dark); font-weight: 600; }
+        .row-discount { color: var(--danger); font-weight: bold; background-color: #fff5f5; }
 
-        /* Calendar */
-        .cal-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .cal-header { font-size: 11px; text-align: center; color: #94a3b8; font-weight: 800; padding-bottom: 5px; }
-        .cal-day {
-            aspect-ratio: 1/1; background: #f8fafc; border-radius: 8px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 600; position: relative;
-        }
-        .status-tag { 
-            font-size: 8px; margin-top: 2px; padding: 1px 4px; border-radius: 4px;
-            background: var(--primary); color: white; max-width: 90%; overflow: hidden;
-        }
+        #total-display { font-size: 28px; font-weight: bold; color: var(--danger); text-align: right; margin: 15px 0; border-top: 2px solid var(--light); padding-top: 10px; }
 
-        button {
-            width: 100%; padding: 16px; border: none; border-radius: 14px;
-            font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s;
-        }
-        .btn-submit { background: var(--primary); color: white; margin-top: 10px; }
-        .btn-submit:active { transform: scale(0.96); }
-        .btn-secondary { background: #f1f5f9; color: #475569; margin-top: 10px; }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* History Section */
+        .history-section { margin-top: 40px; padding-top: 20px; border-top: 3px double var(--border); }
+        .date-picker-container { background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-<div id="loginScreen">
-    <div class="login-card">
-        <h2 style="margin-top:0">Welcome Back</h2>
-        <p style="color:#64748b; margin-bottom:20px">Enter credentials to continue</p>
-        <input type="text" id="user" placeholder="Username" autocomplete="username">
-        <input type="password" id="pass" placeholder="Password">
-        <button class="btn-submit" onclick="login()">Login</button>
-    </div>
-</div>
-
-<div id="mainApp">
-    <div class="header">
-        <h2 id="todayDate" style="margin:0; font-size: 1.2rem;">Date</h2>
-        <button onclick="logout()" style="width:auto; padding:8px 15px; font-size:12px;" class="btn-secondary">Exit</button>
+<div class="container">
+    <div id="loginDiv">
+        <h2 align="center">Staff Login</h2>
+        <input id="user" placeholder="Username (admin)">
+        <input id="pass" type="password" placeholder="Password (1234)">
+        <select id="role">
+            <option value="owner">Owner (Full Access)</option>
+            <option value="employee">Employee (Restricted)</option>
+        </select>
+        <button onclick="login()">Enter System</button>
     </div>
 
-    <div class="card">
-        <div class="shift-grid">
-            <input type="radio" name="s" id="d1" value="Day T1" class="day"><label for="d1">Day T1</label>
-            <input type="radio" name="s" id="d2" value="Day T2" class="day"><label for="d2">Day T2</label>
-            <input type="radio" name="s" id="n1" value="Night T1" class="night"><label for="n1">Night T1</label>
-            <input type="radio" name="s" id="n2" value="Night T2" class="night"><label for="n2">Night T2</label>
-            <input type="radio" name="s" id="off" value="OFF" class="leave"><label for="off">OFF</label>
-            <input type="radio" name="s" id="sl" value="SL" class="leave"><label for="sl">SL</label>
-            <input type="radio" name="s" id="al" value="AL" class="leave"><label for="al">AL</label>
-            <input type="radio" name="s" id="co" value="CO" class="leave"><label for="co">CO</label>
-            <input type="radio" name="s" id="ext" value="EXTRA" class="extra"><label for="ext">EXTRA SHIFT</label>
+    <div id="app" class="hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin:0; border:none;">Billing Dashboard</h2>
+            <button onclick="location.reload()" style="width: auto; background: #6c757d; font-size: 12px; padding: 8px 15px;">Logout</button>
         </div>
-        <button class="btn-submit" onclick="save()">Mark Attendance</button>
-    </div>
-
-    <div class="card">
-        <div class="cal-controls">
-            <button onclick="moveMonth(-1)" class="btn-secondary" style="width:40px; padding:10px;">←</button>
-            <strong id="monthYear">Month 2024</strong>
-            <button onclick="moveMonth(1)" class="btn-secondary" style="width:40px; padding:10px;">→</button>
+        
+        <input id="customer" placeholder="Customer Name (Optional)">
+        
+        <div class="grid-2">
+            <button onclick="placeOrder()">Save & Next Customer</button>
+            <button id="exportBtn" onclick="exportExcel()">Export CSV (Admin Only)</button>
         </div>
-        <div class="calendar-grid" id="calGrid"></div>
-        <button class="btn-secondary" style="margin-top:20px" onclick="exportData()">Export to Excel (.xlsx)</button>
+
+        <div class="menu-section">
+            <label><b>🔍 Search & Add Item:</b></label>
+            <input type="text" id="menuSearch" class="search-box" placeholder="Type item name (e.g. Tropical, Nutella)..." onkeyup="searchMenu()">
+            
+            <div class="grid-2">
+                <select id="categorySelect" onchange="loadItems()"></select>
+                <select id="itemSelect" onchange="loadSizes()"></select>
+            </div>
+            <select id="sizeSelect"></select>
+            <button onclick="addSelectedItem()" style="background: #007bff;">Add Item to Bill</button>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                <label><b>🏷️ Manual Discount:</b></label>
+                <div class="flex-row">
+                    <input type="number" id="discountInput" placeholder="Discount Amount (₹)">
+                    <button onclick="addManualDiscount()" style="background: var(--danger); width: 200px;">Apply Discount</button>
+                </div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Price</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="bill"></tbody>
+        </table>
+        <div id="total-display">Total: ₹ <span id="total">0</span></div>
+
+        <div class="history-section">
+            <h3>Daily Order History</h3>
+            <div class="date-picker-container">
+                <label>View Records for Date:</label>
+                <input type="date" id="historyDateFilter" onchange="renderHistory()">
+            </div>
+            <div id="historyList">
+                <p style="color:gray; text-align: center;">Select a date to see sales records.</p>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    let logs = JSON.parse(localStorage.getItem('att_logs')) || {};
-    let viewDate = new Date();
+    // --- UPDATED MENU DATA ---
+    const menu = {
+        "Bowls": {
+            "dark": {Small:100, Big:130}, "white": {Small:100, Big:130}, "milk": {Small:100, Big:130},
+            "fusion": {Small:120, Big:150}, "nutella": {Small:120, Big:150}, "Biscoff": {Small:120, Big:150}, "Kitkat": {Small:120, Big:150},"Oreo": {Small:120, Big:150},"Coffee": {Small:120, Big:150},"Blueberry": {Small:120, Big:150},"PineApple": {Small:130, Big:160},
+        },
+        "Brownie": { "plain": 110, "nutella": 190, "Biscoff Dip": 100 },
+        "Boba": { 
+            "Tropical Sunset": 120, "Peach Passion": 120, "Mano Berry": 120, 
+            "Pine Red": 120, 
+            "Passion Berry Splash": 120, "Strawberry": 110, 
+            "Tangy Peach": 120, "Jugalbandi": 120, "Kiwi": 110, "Orange": 110, 
+            "Peach": 110, "Passion Fruit": 110, "Blueberry": 110, "Pineapple": 110 
+        },
+        "Add-ons": { "Extra Ice Cream": 20 }
+    };
 
-    function login() {
-        if(document.getElementById('user').value === "admin" && document.getElementById('pass').value === "1234") {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            render();
-        } else { alert("Wrong credentials!"); }
+    let billItems = [];
+    let currentTotal = 0;
+    let editingOrderId = null;
+
+    // --- CORE FUNCTIONS ---
+
+    function login(){
+        const user = document.getElementById("user").value;
+        const pass = document.getElementById("pass").value;
+        if(user === "admin" && pass === "1234"){
+            document.getElementById("loginDiv").classList.add("hidden");
+            document.getElementById("app").classList.remove("hidden");
+            
+            // Set Calendar to Today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById("historyDateFilter").value = today;
+
+            if(document.getElementById("role").value === "employee") {
+                document.getElementById("exportBtn").classList.add("hidden");
+            }
+            
+            renderCategories();
+            renderHistory();
+        } else { alert("Invalid Credentials! (admin / 1234)"); }
     }
 
-    function logout() { location.reload(); }
+    style="text-transform: capitalize;"
 
-    function save() {
-        const sel = document.querySelector('input[name="s"]:checked');
-        if(!sel) return alert("Pick a shift!");
-        const now = new Date();
-        const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-        logs[key] = { status: sel.value, time: now.toLocaleTimeString() };
-        localStorage.setItem('att_logs', JSON.stringify(logs));
-        render();
-        alert("Attendance Marked!");
-    }
-
-    function render() {
-        document.getElementById('todayDate').innerText = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short', weekday:'short' });
-        const grid = document.getElementById('calGrid');
-        const label = document.getElementById('monthYear');
-        grid.innerHTML = '';
-        
-        label.innerText = viewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div class="cal-header">${d}</div>`);
-
-        const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
-        const days = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-
-        for(let i=0; i<first; i++) grid.innerHTML += `<div></div>`;
-        for(let d=1; d<=days; d++) {
-            const key = `${viewDate.getFullYear()}-${viewDate.getMonth()}-${d}`;
-            const log = logs[key];
-            const activeClass = log ? 'style="background:#fff; border:1.5px solid var(--primary)"' : '';
-            grid.innerHTML += `
-                <div class="cal-day" ${activeClass}>
-                    ${d}
-                    ${log ? `<div class="status-tag">${log.status}</div>` : ''}
-                </div>`;
+    function searchMenu() {
+        let input = document.getElementById("menuSearch").value.toLowerCase();
+        if(input.length < 2) return;
+        for (let cat in menu) {
+            for (let item in menu[cat]) {
+                if (item.toLowerCase().includes(input)) {
+                    document.getElementById("categorySelect").value = cat;
+                    loadItems();
+                    document.getElementById("itemSelect").value = item;
+                    loadSizes();
+                    return;
+                }
+            }
         }
     }
 
-    function moveMonth(dir) {
-        viewDate.setMonth(viewDate.getMonth() + dir);
-        render();
+    function renderCategories(){
+        let c = document.getElementById("categorySelect");
+        c.innerHTML = "<option value=''>-- Category --</option>";
+        for(let cat in menu) c.innerHTML += `<option value="${cat}">${cat}</option>`;
     }
 
-    function exportData() {
-        const rows = Object.keys(logs).map(k => ({ Date: k, Status: logs[k].status, MarkedAt: logs[k].time }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-        XLSX.writeFile(wb, "Attendance_Report.xlsx");
+    function loadItems(){
+        let cat = document.getElementById("categorySelect").value;
+        let i = document.getElementById("itemSelect");
+        i.innerHTML = "<option value=''>-- Item --</option>";
+        if(!cat) return;
+        for(let item in menu[cat]) i.innerHTML += `<option value="${item}">${item}</option>`;
+    }
+
+    function loadSizes(){
+        let cat = document.getElementById("categorySelect").value;
+        let item = document.getElementById("itemSelect").value;
+        let s = document.getElementById("sizeSelect");
+        s.innerHTML = "";
+        if(!cat || !item) return;
+        let opts = menu[cat][item];
+        if(typeof opts === "object") {
+            for(let sz in opts) s.innerHTML += `<option value="${sz}">${sz} - ₹${opts[sz]}</option>`;
+        } else { s.innerHTML = `<option value="standard">Standard - ₹${opts}</option>`; }
+    }
+
+    function addSelectedItem(){
+        let cat = document.getElementById("categorySelect").value;
+        let item = document.getElementById("itemSelect").value;
+        let size = document.getElementById("sizeSelect").value;
+        if(!item) return alert("Select an item first");
+
+        let price = (typeof menu[cat][item] === "object") ? menu[cat][item][size] : menu[cat][item];
+        let existing = billItems.find(i => i.name === item && i.size === (size==="standard"?"":size) && i.price > 0);
+
+        if(existing) { 
+            existing.qty++; 
+            existing.total = existing.qty * existing.price; 
+        } else { 
+            billItems.push({name:item, price, size: (size==="standard"?"":size), qty:1, total:price}); 
+        }
+        renderBill();
+    }
+
+    function addManualDiscount() {
+        let discPercent = parseFloat(document.getElementById("discountInput").value);
+        
+        if (isNaN(discPercent) || discPercent <= 0 || discPercent > 100) {
+            return alert("Please enter a valid percentage (1-100)");
+        }
+
+        let subtotal = billItems.reduce((acc, item) => item.price > 0 ? acc + item.total : acc, 0);
+        let calculatedDisc = (subtotal * (discPercent / 100));
+
+        billItems.push({
+            name: `Discount (${discPercent}%)`, 
+            price: -calculatedDisc, 
+            size: "Adj", 
+            qty: 1, 
+            total: -calculatedDisc
+        });
+
+        document.getElementById("discountInput").value = "";
+        renderBill();
+    }
+
+    function renderBill(){
+        let html = ""; currentTotal = 0;
+        billItems.forEach((item, index)=>{
+            currentTotal += item.total;
+            let isDisc = item.price < 0;
+            let rowClass = isDisc ? "class='row-discount'" : "";
+            
+            html += `<tr ${rowClass}>
+                <td>${item.name} <small>(${item.size})</small></td>
+                <td>₹${item.price}</td>
+                <td>
+                    ${!isDisc ? `
+                    <button style="width:25px; padding:2px" onclick="changeQty(${index},-1)">-</button>
+                    ${item.qty}
+                    <button style="width:25px; padding:2px" onclick="changeQty(${index},1)">+</button>
+                    ` : '—'}
+                </td>
+                <td>₹${item.total}</td>
+                <td><button class="btn-delete" onclick="removeItem(${index})">X</button></td>
+            </tr>`;
+        });
+        document.getElementById("bill").innerHTML = html;
+        document.getElementById("total").innerText = currentTotal;
+    }
+
+    function changeQty(i, delta){
+        billItems[i].qty += delta;
+        if(billItems[i].qty <= 0) billItems.splice(i,1);
+        else billItems[i].total = billItems[i].qty * billItems[i].price;
+        renderBill();
+    }
+
+    function removeItem(i){ billItems.splice(i,1); renderBill(); }
+
+    function placeOrder(){
+        let cust = document.getElementById("customer").value.trim();
+        if(billItems.length === 0) return alert("Please add at least one item to the bill");
+
+        // Fallback placeholder if customer name is omitted
+        if(!cust) { cust = "Walk-in Customer"; }
+
+        let orders = JSON.parse(localStorage.getItem("orders")) || [];
+        let now = new Date();
+        let orderData = { 
+            id: editingOrderId || Date.now(), 
+            customer: cust, 
+            items: [...billItems], 
+            total: currentTotal, 
+            date: now.toLocaleDateString(), 
+            time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+
+        if(editingOrderId) {
+            let idx = orders.findIndex(o => o.id === editingOrderId);
+            orders[idx] = orderData;
+            editingOrderId = null;
+        } else { orders.push(orderData); }
+
+        localStorage.setItem("orders", JSON.stringify(orders));
+        billItems = []; document.getElementById("customer").value = "";
+        renderBill(); renderHistory();
+        alert("Order Processed Successfully!");
+    }
+
+    function renderHistory(){
+        const selectedDate = document.getElementById("historyDateFilter").value;
+        if(!selectedDate) return;
+        const filterDate = new Date(selectedDate).toLocaleDateString();
+        
+        let orders = JSON.parse(localStorage.getItem("orders")) || [];
+        let container = document.getElementById("historyList");
+        let filteredOrders = orders.filter(o => o.date === filterDate);
+
+        if(filteredOrders.length === 0){
+            container.innerHTML = `<p style="color:red; text-align:center; padding: 20px;">No records found for ${filterDate}</p>`;
+            return;
+        }
+        
+        let dailyTotal = filteredOrders.reduce((sum, o) => sum + o.total, 0);
+        
+        let html = `<table><tr><th>Customer</th><th>Total</th><th>Time</th><th>Action</th></tr>`;
+        filteredOrders.reverse().forEach(o => {
+            html += `<tr>
+                <td><b>${o.customer}</b></td>
+                <td>₹${o.total}</td>
+                <td>${o.time}</td>
+                <td>
+                    <button class="btn-edit" onclick="editOrder(${o.id})">Edit</button>
+                    <button class="btn-delete" onclick="deleteOrder(${o.id})">Del</button>
+                </td>
+            </tr>`;
+        });
+        
+        // Append Total Daily Income row
+        html += `<tr style="background-color: #f1f3f5; font-weight: bold; font-size: 16px; border-top: 2px solid var(--dark);">
+            <td>Total Daily Income</td>
+            <td style="color: var(--danger);">₹${dailyTotal}</td>
+            <td>—</td>
+            <td>—</td>
+        </tr>`;
+        
+        container.innerHTML = html + "</table>";
+    }
+
+    function editOrder(id){
+        let orders = JSON.parse(localStorage.getItem("orders")) || [];
+        let order = orders.find(o => o.id === id);
+        if(order){
+            billItems = [...order.items];
+            document.getElementById("customer").value = (order.customer === "Walk-in Customer") ? "" : order.customer;
+            editingOrderId = id;
+            renderBill();
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+    }
+
+    function deleteOrder(id){
+        if(confirm("Delete this order permanently?")){
+            let orders = JSON.parse(localStorage.getItem("orders")) || [];
+            orders = orders.filter(o => o.id !== id);
+            localStorage.setItem("orders", JSON.stringify(orders));
+            renderHistory();
+        }
+    }
+
+    function exportExcel(){
+        let orders = JSON.parse(localStorage.getItem("orders")) || [];
+        if(orders.length === 0) return alert("No data to export");
+        let csv = "Customer,Total,Date,Time\n" + orders.map(o => `"${o.customer}",${o.total},${o.date},${o.time}`).join("\n");
+        let link = document.createElement("a");
+        link.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+        link.download = "POS_Sales_Report.csv";
+        link.click();
     }
 </script>
+
 </body>
 </html>
